@@ -1,0 +1,8 @@
+.env/
+.DS_Store
+.idea/
+*.pyc
+*.json
+*.xlsx
+*.csv
+
