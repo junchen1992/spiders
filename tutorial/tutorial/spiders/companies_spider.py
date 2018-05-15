@@ -1,3 +1,5 @@
+import re
+
 import scrapy
 
 
@@ -9,12 +11,15 @@ class QuotesSpider(scrapy.Spider):
         # 'REQUEST_DEPTH_MAX': 10
     }
 
+    company_types = ['外资(欧美)', '外资(非欧美)', '合资', '国企', '民营公司', '外企代表处', '政府机关',
+                     '事业单位', '非营利组织', '上市公司', '创业公司']
+
     def start_requests(self):
         urls = [
             # dalian
-            # 'https://search.51job.com/list/230300,000000,0000,00,9,99,%2520,1,1.html?lang=c&stype=&postchannel=0000&workyear=99&cotype=99&degreefrom=99&jobterm=99&companysize=99&providesalary=99&lonlat=0%2C0&radius=-1&ord_field=0&confirmdate=9&fromType=&dibiaoid=0&address=&line=&specialarea=00&from=&welfare=',
+            'https://search.51job.com/list/230300,000000,0000,00,9,99,%2520,1,1.html?lang=c&stype=&postchannel=0000&workyear=99&cotype=99&degreefrom=99&jobterm=99&companysize=99&providesalary=99&lonlat=0%2C0&radius=-1&ord_field=0&confirmdate=9&fromType=&dibiaoid=0&address=&line=&specialarea=00&from=&welfare=',
             # qingdao
-            'https://search.51job.com/list/120300,000000,0000,00,9,99,%2520,1,1.html?lang=c&stype=&postchannel=0000&workyear=99&cotype=99&degreefrom=99&jobterm=99&companysize=99&providesalary=99&lonlat=0%2C0&radius=-1&ord_field=0&confirmdate=9&fromType=&dibiaoid=0&address=&line=&specialarea=00&from=&welfare=',
+            # 'https://search.51job.com/list/120300,000000,0000,00,9,99,%2520,1,1.html?lang=c&stype=&postchannel=0000&workyear=99&cotype=99&degreefrom=99&jobterm=99&companysize=99&providesalary=99&lonlat=0%2C0&radius=-1&ord_field=0&confirmdate=9&fromType=&dibiaoid=0&address=&line=&specialarea=00&from=&welfare=',
         ]
         for url in urls:
             yield scrapy.Request(url=url, callback=self.parse)
@@ -36,17 +41,31 @@ class QuotesSpider(scrapy.Spider):
 
         header = company.css('div.tHeader')
         company_name = header.css('h1::attr(title)').extract_first()
+
         content = header.css('p.ltype::text').extract_first()
-        content_list = content.split('|')
-        content_list.extend('' * (3 - len(content_list)))
-        company_type = content_list[0].strip()
-        company_employers = content_list[1].strip()
-        company_industry = content_list[2].strip()
+        company_type = ''
+        company_employers = ''
+        company_industry = ''
+        if content:
+            content_list = content.split('|')
+            for content_item in content_list:
+                stripped_content = content_item.strip()
+                if stripped_content in self.company_types:
+                    company_type = stripped_content
+                elif re.match('.*[\d]+人', stripped_content) is not None:
+                    company_employers = stripped_content
+                else:
+                    company_industry = stripped_content
 
         body = company.css('div.tCompany_full')
         company_introduction = body.css('div.con_txt::text').extract_first()
         addresses = body.css('div.bmsg div.inbox p.fp')
-        company_address = addresses[0].css('::text').extract()[-1]
+        try:
+            company_address_nodes = addresses[0].css('::text').extract()
+            company_address = company_address_nodes[-1] if company_address_nodes else ''
+        except Exception:
+            company_address = ''
+
         company_website = ''
         if len(addresses) > 1:
             company_website = addresses[1].css('a::attr(href)').extract_first()

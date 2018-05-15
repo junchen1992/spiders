@@ -1,6 +1,6 @@
 import pandas as pd
 
-path = '大连.json'
+path = 'dalian.json'
 df = pd.read_json(path)
 
 res_df = pd.DataFrame()
@@ -12,4 +12,4 @@ res_df['公司地址'] = df['address']
 res_df['公司官网'] = df['website']
 res_df['公司简介'] = df['introduction']
 
-res_df.to_excel('大连.xlsx')
+res_df.to_excel('大连.xlsx', index=False)
